@@ -5,6 +5,14 @@ Generador de reporte HTML ejecutivo para la flota de Bicimotos. Cruza el reporte
 >
 > **[VER EL ULTIMO REPORTE EN LINEA](https://juanc101195.github.io/Informe_Bicimotos/)**
 >
+> **[IMPRIMIR REPORTE (solo Top 10 morosos)](https://juanc101195.github.io/Informe_Bicimotos/imprimir.html)**
+>
+
+## Imprimir reporte
+
+La pagina de impresion muestra **solo el Top 10 de clientes con mas cuotas adeudadas** con el mismo look del reporte principal (filas resaltadas para los que no registran recorrido). Al abrirla, un boton "Imprimir / Guardar PDF" lanza el dialogo del navegador para generar el PDF directo.
+
+Sirve para imprimir o adjuntar a la cobranza sin la matriz de recorridos.
 
 ## Que muestra
 

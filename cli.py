@@ -65,6 +65,13 @@ def cmd_reporte(args: argparse.Namespace) -> int:
 
     print(f"      Escribiendo {out_path}...")
     out_path.write_text(html, encoding="utf-8")
+
+    if morosos:
+        print_path = out_path.parent / "imprimir.html"
+        html_print = report_html.generar_html_print(morosos, rango_label=rango)
+        print_path.write_text(html_print, encoding="utf-8")
+        print(f"      Escribiendo {print_path}...")
+
     print(f"OK -> {out_path}")
     return 0
 

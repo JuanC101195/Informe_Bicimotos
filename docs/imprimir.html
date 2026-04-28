@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang='es'><head><meta charset='utf-8'>
+<title>Bicimotos - Top 10 morosos (imprimible)</title>
+<style>
+:root{
+  --bg:#0f172a;--panel:#1e293b;--text:#e2e8f0;--muted:#94a3b8;
+  --accent:#38bdf8;--border:#334155;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;
+  background:var(--bg);color:var(--text);line-height:1.4}
+header{padding:24px 32px;border-bottom:1px solid var(--border);background:#0b1220}
+header h1{margin:0 0 4px 0;font-size:22px;font-weight:600}
+header .sub{color:var(--muted);font-size:13px}
+main{padding:24px 32px;max-width:1400px;margin:0 auto}
+.controls{display:flex;gap:16px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+.controls label{font-size:13px;color:var(--muted)}
+.controls select{
+  padding:8px 12px;background:var(--panel);color:var(--text);
+  border:1px solid var(--border);border-radius:6px;font-size:14px;min-width:160px
+}
+.kpis{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  padding:12px 16px;flex:1;min-width:140px}
+.kpi .label{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+.kpi .value{font-size:24px;font-weight:600;color:var(--accent);margin-top:4px}
+.matriz-wrap{background:var(--panel);border:1px solid var(--border);
+  border-radius:8px;padding:16px;overflow-x:auto}
+table.matriz{border-collapse:collapse;width:100%;font-size:12px}
+table.matriz th,table.matriz td{
+  padding:6px 8px;text-align:center;border:1px solid var(--border);
+  white-space:nowrap
+}
+table.matriz th{background:#0b1220;font-weight:600;color:var(--muted);font-size:11px}
+table.matriz td.dia{text-align:left;font-weight:500;background:#0b1220;
+  color:var(--text);min-width:160px}
+table.matriz td.total,table.matriz th.total{
+  background:#0b1220;font-weight:600;color:var(--accent)
+}
+table.matriz tfoot td{background:#0b1220;font-weight:600;color:var(--accent)}
+.empty{color:#475569}
+.placa-section{display:none}
+.placa-section.active{display:block}
+.top-section{margin-top:32px;background:var(--panel);border:1px solid var(--border);
+  border-radius:8px;padding:20px}
+.top-section h2{margin:0 0 4px 0;font-size:18px;font-weight:600}
+.top-section .sub{color:var(--muted);font-size:12px;margin-bottom:14px}
+table.top{border-collapse:collapse;width:100%;font-size:13px}
+table.top th,table.top td{padding:8px 12px;border-bottom:1px solid var(--border);
+  text-align:left}
+table.top th{color:var(--muted);font-size:11px;text-transform:uppercase;
+  letter-spacing:.5px;font-weight:600}
+table.top td.rank{font-weight:600;color:var(--accent);width:40px;text-align:center}
+table.top td.placa{font-weight:500}
+table.top td.num{text-align:right;font-variant-numeric:tabular-nums;width:120px}
+.bar{position:relative;height:6px;background:#0b1220;border-radius:3px;
+  overflow:hidden;width:100%;min-width:80px}
+.bar > span{display:block;height:100%;background:linear-gradient(90deg,#0ea5e9,#ef4444)}
+table.top tr.row-no-km{background:rgba(239,68,68,0.10)}
+table.top tr.row-no-km td{border-bottom-color:rgba(239,68,68,0.25)}
+.badge-alert{display:inline-block;padding:2px 8px;border-radius:10px;
+  background:rgba(239,68,68,0.20);color:#fca5a5;font-size:11px;font-weight:600;
+  letter-spacing:.3px;white-space:nowrap}
+footer{padding:20px 32px;color:var(--muted);font-size:12px;text-align:center;
+  border-top:1px solid var(--border);margin-top:32px}
+
+.print-actions{display:flex;gap:12px;align-items:center;margin-bottom:20px}
+.print-btn{padding:10px 18px;background:var(--accent);color:#0b1220;
+  border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer}
+.print-btn:hover{filter:brightness(1.1)}
+.print-actions a{color:var(--accent);font-size:13px;text-decoration:none}
+.print-actions a:hover{text-decoration:underline}
+@media print{
+  body{background:#fff;color:#000}
+  header{background:#fff;color:#000;border-bottom:1px solid #ccc}
+  header .sub{color:#666}
+  main{padding:0;max-width:none}
+  .no-print{display:none !important}
+  .top-section{background:#fff;border:none;padding:0;margin-top:0}
+  .top-section h2{color:#000}
+  .top-section .sub{color:#666}
+  table.top th{background:#f5f5f5;color:#333;border-bottom:1px solid #999}
+  table.top td{border-bottom-color:#ddd;color:#000}
+  table.top td.rank,table.top td.num{color:#000}
+  .empty{color:#999}
+  table.top tr.row-no-km{background:#fee !important;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .badge-alert{background:#fee !important;color:#c33 !important;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .bar{background:#eee !important;-webkit-print-color-adjust:exact;
+    print-color-adjust:exact}
+  .bar > span{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  footer{display:none}
+}
+</style></head>
+<body>
+<header>
+  <h1>Bicimotos &mdash; Top 10 clientes con mas cuotas adeudadas</h1>
+  <div class='sub'>Vista para impresion / PDF &middot; 2026-04-20 a 2026-04-27</div>
+</header>
+<main>
+  <div class='print-actions no-print'><button class='print-btn' onclick='window.print()'>Imprimir / Guardar PDF</button><a href='index.html'>&larr; Volver al reporte completo</a></div>
+  <section class='top-section'><h2>Top 10 clientes con mas cuotas adeudadas <span class='badge-alert' style='margin-left:8px'>3 sin recorrido</span><div class='sub' style='margin-top:8px'>Filas marcadas: cliente debe pero la moto no registra movimiento en el periodo (parqueada o no usada).</div></h2><div class='sub'>Ordenados por cantidad de cuotas en mora. Km del periodo cruzado con el reporte de recorridos.</div><table class='top'><thead><tr><th>#</th><th>Placa</th><th>Conductor</th><th># Cuotas</th><th>Distribucion</th><th>Deuda</th><th>Km periodo</th></tr></thead><tbody><tr class='row-no-km'><td class='rank'>1</td><td class='placa'>BI0039</td><td>YORYELIS CARMONA CASTILLO</td><td class='num'>3.2</td><td><div class='bar'><span style='width:100.0%'></span></div></td><td class='num'>$485</td><td class='num'><span class='badge-alert'>Sin recorrido</span></td></tr><tr><td class='rank'>2</td><td class='placa'>BI0028</td><td>KAROLAY GOMEZ NAVAS</td><td class='num'>2.0</td><td><div class='bar'><span style='width:62.5%'></span></div></td><td class='num'>$400</td><td class='num'>14.04 km</td></tr><tr class='row-no-km'><td class='rank'>3</td><td class='placa'>BI0095</td><td>RINA INES MARRUGO CASSIANI</td><td class='num'>2.0</td><td><div class='bar'><span style='width:62.5%'></span></div></td><td class='num'>$300</td><td class='num'><span class='badge-alert'>Sin recorrido</span></td></tr><tr><td class='rank'>4</td><td class='placa'>BI0131</td><td>GUIDO NAVAS DE ARCO</td><td class='num'>1.4</td><td><div class='bar'><span style='width:43.7%'></span></div></td><td class='num'>$205</td><td class='num'>5.58 km</td></tr><tr><td class='rank'>5</td><td class='placa'>BI0099</td><td>MARY STHELLA BARRIO CASTRO</td><td class='num'>1.3</td><td><div class='bar'><span style='width:40.6%'></span></div></td><td class='num'>$200</td><td class='num'>27.89 km</td></tr><tr><td class='rank'>6</td><td class='placa'>BI0094</td><td>DIOSBER MARTINEZ PIRELA</td><td class='num'>1.3</td><td><div class='bar'><span style='width:40.6%'></span></div></td><td class='num'>$200</td><td class='num'>30.65 km</td></tr><tr><td class='rank'>7</td><td class='placa'>BI0172</td><td>EILEN MARGARITA PUENTES TABOADA</td><td class='num'>1.2</td><td><div class='bar'><span style='width:37.5%'></span></div></td><td class='num'>$180</td><td class='num'>1.02 km</td></tr><tr><td class='rank'>8</td><td class='placa'>BI0148</td><td>CAROL GARCIA ALMANZA</td><td class='num'>1.2</td><td><div class='bar'><span style='width:37.5%'></span></div></td><td class='num'>$175</td><td class='num'>0.22 km</td></tr><tr><td class='rank'>9</td><td class='placa'>BI0109</td><td>ANGELICA MARIA BARRAGAN HERNANDEZ</td><td class='num'>1.2</td><td><div class='bar'><span style='width:37.5%'></span></div></td><td class='num'>$175</td><td class='num'>12.97 km</td></tr><tr class='row-no-km'><td class='rank'>10</td><td class='placa'>BI0093</td><td>YERLIS MURILLO HIGUITA</td><td class='num'>1.1</td><td><div class='bar'><span style='width:34.4%'></span></div></td><td class='num'>$160</td><td class='num'><span class='badge-alert'>Sin recorrido</span></td></tr></tbody></table></section>
+</main>
+</body></html>
