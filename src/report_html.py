@@ -340,3 +340,82 @@ def generar_html(
 <footer>Generado automaticamente desde el Excel de Bicimotos.</footer>
 <script>{JS}</script>
 </body></html>"""
+
+
+PRINT_CSS = """
+.print-actions{display:flex;gap:12px;align-items:center;margin-bottom:20px}
+.print-btn{padding:10px 18px;background:var(--accent);color:#0b1220;
+  border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer}
+.print-btn:hover{filter:brightness(1.1)}
+.print-actions a{color:var(--accent);font-size:13px;text-decoration:none}
+.print-actions a:hover{text-decoration:underline}
+@media print{
+  body{background:#fff;color:#000}
+  header{background:#fff;color:#000;border-bottom:1px solid #ccc}
+  header .sub{color:#666}
+  main{padding:0;max-width:none}
+  .no-print{display:none !important}
+  .top-section{background:#fff;border:none;padding:0;margin-top:0}
+  .top-section h2{color:#000}
+  .top-section .sub{color:#666}
+  table.top th{background:#f5f5f5;color:#333;border-bottom:1px solid #999}
+  table.top td{border-bottom-color:#ddd;color:#000}
+  table.top td.rank,table.top td.num{color:#000}
+  .empty{color:#999}
+  table.top tr.row-no-km{background:#fee !important;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .badge-alert{background:#fee !important;color:#c33 !important;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .bar{background:#eee !important;-webkit-print-color-adjust:exact;
+    print-color-adjust:exact}
+  .bar > span{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  footer{display:none}
+}
+"""
+
+
+def generar_html_print(
+    morosos: list[dict] | None,
+    rango_label: str = "",
+) -> str:
+    """HTML minimo con solo el Top 10 morosos, optimizado para impresion/PDF.
+
+    Reusa el mismo renderer ``_render_top_morosos`` que el reporte principal,
+    asi que el look del Top es identico. Agrega un boton "Imprimir / Guardar PDF"
+    que llama ``window.print()`` y reglas ``@media print`` para que el PDF
+    salga limpio (fondo blanco, texto negro, badges de alerta visibles).
+    """
+    if not morosos:
+        body = (
+            "<p style='padding:24px;color:var(--muted)'>"
+            "No hay datos de morosos para imprimir."
+            "</p>"
+        )
+    else:
+        body = _render_top_morosos(morosos)
+
+    sub = "Vista para impresion / PDF"
+    if rango_label:
+        sub += f" &middot; {rango_label}"
+
+    actions = (
+        "<div class='print-actions no-print'>"
+        "<button class='print-btn' onclick='window.print()'>Imprimir / Guardar PDF</button>"
+        "<a href='index.html'>&larr; Volver al reporte completo</a>"
+        "</div>"
+    )
+
+    return f"""<!doctype html>
+<html lang='es'><head><meta charset='utf-8'>
+<title>Bicimotos - Top 10 morosos (imprimible)</title>
+<style>{CSS}{PRINT_CSS}</style></head>
+<body>
+<header>
+  <h1>Bicimotos &mdash; Top 10 clientes con mas cuotas adeudadas</h1>
+  <div class='sub'>{sub}</div>
+</header>
+<main>
+  {actions}
+  {body}
+</main>
+</body></html>"""
