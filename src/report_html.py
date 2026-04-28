@@ -68,6 +68,14 @@ table.top tr.row-no-km td{border-bottom-color:rgba(239,68,68,0.25)}
 .badge-alert{display:inline-block;padding:2px 8px;border-radius:10px;
   background:rgba(239,68,68,0.20);color:#fca5a5;font-size:11px;font-weight:600;
   letter-spacing:.3px;white-space:nowrap}
+.top-header{display:flex;justify-content:space-between;align-items:center;
+  flex-wrap:wrap;gap:12px;margin-bottom:4px}
+.top-header h2{margin:0}
+.print-link{padding:8px 14px;background:rgba(56,189,248,0.15);
+  color:var(--accent);text-decoration:none;border-radius:6px;
+  border:1px solid rgba(56,189,248,0.30);font-size:13px;font-weight:500;
+  white-space:nowrap}
+.print-link:hover{background:rgba(56,189,248,0.25)}
 footer{padding:20px 32px;color:var(--muted);font-size:12px;text-align:center;
   border-top:1px solid var(--border);margin-top:32px}
 """
@@ -208,7 +216,7 @@ def _fmt_money(v: float) -> str:
     return f"${v:,.0f}".replace(",", ".")
 
 
-def _render_top_morosos(top: list[dict]) -> str:
+def _render_top_morosos(top: list[dict], print_url: str | None = None) -> str:
     if not top:
         return ""
     max_cuotas = top[0]["num_cuotas"] or 1.0
@@ -245,9 +253,18 @@ def _render_top_morosos(top: list[dict]) -> str:
             "en el periodo (parqueada o no usada)."
             "</div>"
         )
+    print_btn = ""
+    if print_url:
+        print_btn = (
+            f"<a href='{print_url}' class='print-link no-print'>"
+            "Imprimir / Ver PDF &rarr;</a>"
+        )
     return (
         "<section class='top-section'>"
+        "<div class='top-header'>"
         f"<h2>Top 10 clientes con mas cuotas adeudadas{leyenda}</h2>"
+        f"{print_btn}"
+        "</div>"
         "<div class='sub'>Ordenados por cantidad de cuotas en mora. "
         "Km del periodo cruzado con el reporte de recorridos.</div>"
         "<table class='top'>"
@@ -311,7 +328,7 @@ def generar_html(
     )
 
     if morosos is not None:
-        top_html = _render_top_morosos(morosos)
+        top_html = _render_top_morosos(morosos, print_url="imprimir.html")
     else:
         top = matriz_mod.top_placas(movimientos, cfg, n=10)
         top_html = _render_top_placas(top)
