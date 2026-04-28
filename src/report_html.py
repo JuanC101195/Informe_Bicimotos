@@ -1,0 +1,342 @@
+"""Renderer del HTML ejecutivo con selector de placa y matriz dias x horas."""
+
+from __future__ import annotations
+
+from datetime import date
+
+import pandas as pd
+
+from . import matriz as matriz_mod
+
+CSS = """
+:root{
+  --bg:#0f172a;--panel:#1e293b;--text:#e2e8f0;--muted:#94a3b8;
+  --accent:#38bdf8;--border:#334155;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;
+  background:var(--bg);color:var(--text);line-height:1.4}
+header{padding:24px 32px;border-bottom:1px solid var(--border);background:#0b1220}
+header h1{margin:0 0 4px 0;font-size:22px;font-weight:600}
+header .sub{color:var(--muted);font-size:13px}
+main{padding:24px 32px;max-width:1400px;margin:0 auto}
+.controls{display:flex;gap:16px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+.controls label{font-size:13px;color:var(--muted)}
+.controls select{
+  padding:8px 12px;background:var(--panel);color:var(--text);
+  border:1px solid var(--border);border-radius:6px;font-size:14px;min-width:160px
+}
+.kpis{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  padding:12px 16px;flex:1;min-width:140px}
+.kpi .label{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+.kpi .value{font-size:24px;font-weight:600;color:var(--accent);margin-top:4px}
+.matriz-wrap{background:var(--panel);border:1px solid var(--border);
+  border-radius:8px;padding:16px;overflow-x:auto}
+table.matriz{border-collapse:collapse;width:100%;font-size:12px}
+table.matriz th,table.matriz td{
+  padding:6px 8px;text-align:center;border:1px solid var(--border);
+  white-space:nowrap
+}
+table.matriz th{background:#0b1220;font-weight:600;color:var(--muted);font-size:11px}
+table.matriz td.dia{text-align:left;font-weight:500;background:#0b1220;
+  color:var(--text);min-width:160px}
+table.matriz td.total,table.matriz th.total{
+  background:#0b1220;font-weight:600;color:var(--accent)
+}
+table.matriz tfoot td{background:#0b1220;font-weight:600;color:var(--accent)}
+.empty{color:#475569}
+.placa-section{display:none}
+.placa-section.active{display:block}
+.top-section{margin-top:32px;background:var(--panel);border:1px solid var(--border);
+  border-radius:8px;padding:20px}
+.top-section h2{margin:0 0 4px 0;font-size:18px;font-weight:600}
+.top-section .sub{color:var(--muted);font-size:12px;margin-bottom:14px}
+table.top{border-collapse:collapse;width:100%;font-size:13px}
+table.top th,table.top td{padding:8px 12px;border-bottom:1px solid var(--border);
+  text-align:left}
+table.top th{color:var(--muted);font-size:11px;text-transform:uppercase;
+  letter-spacing:.5px;font-weight:600}
+table.top td.rank{font-weight:600;color:var(--accent);width:40px;text-align:center}
+table.top td.placa{font-weight:500}
+table.top td.num{text-align:right;font-variant-numeric:tabular-nums;width:120px}
+.bar{position:relative;height:6px;background:#0b1220;border-radius:3px;
+  overflow:hidden;width:100%;min-width:80px}
+.bar > span{display:block;height:100%;background:linear-gradient(90deg,#0ea5e9,#ef4444)}
+table.top tr.row-no-km{background:rgba(239,68,68,0.10)}
+table.top tr.row-no-km td{border-bottom-color:rgba(239,68,68,0.25)}
+.badge-alert{display:inline-block;padding:2px 8px;border-radius:10px;
+  background:rgba(239,68,68,0.20);color:#fca5a5;font-size:11px;font-weight:600;
+  letter-spacing:.3px;white-space:nowrap}
+footer{padding:20px 32px;color:var(--muted);font-size:12px;text-align:center;
+  border-top:1px solid var(--border);margin-top:32px}
+"""
+
+JS = """
+function selectPlaca(placa){
+  document.querySelectorAll('.placa-section').forEach(function(el){
+    el.classList.remove('active');
+  });
+  var target = document.getElementById('placa-' + placa);
+  if(target){ target.classList.add('active'); }
+}
+document.addEventListener('DOMContentLoaded', function(){
+  var sel = document.getElementById('placa-select');
+  sel.addEventListener('change', function(){ selectPlaca(this.value); });
+  selectPlaca(sel.value);
+});
+"""
+
+
+def _color_for_km(km: float, vmax: float) -> str:
+    """Devuelve un background-color CSS proporcional al km de la celda."""
+    if vmax <= 0 or pd.isna(km) or km <= 0:
+        return ""
+    intensity = min(km / vmax, 1.0)
+    r = int(15 + (239 - 15) * intensity)
+    g = int(23 + (68 - 23) * intensity)
+    b = int(42 + (68 - 42) * intensity)
+    text_color = "#fff" if intensity > 0.5 else "var(--text)"
+    return f"background:rgb({r},{g},{b});color:{text_color};"
+
+
+def _render_matriz_table(matriz: pd.DataFrame, vmax_global: float) -> str:
+    cfg = matriz_mod.MatrizConfig()
+    franjas = [cfg.franja_label(h) for h in cfg.franjas()]
+
+    if matriz.empty:
+        return (
+            "<div class='matriz-wrap'>"
+            "<p class='empty' style='margin:0;padding:20px;text-align:center'>"
+            "Esta placa no registra recorridos en el periodo."
+            "</p></div>"
+        )
+
+    head = "<tr><th class='dia'>Dia</th>"
+    for f in franjas:
+        head += f"<th>{f}</th>"
+    head += "<th class='total'>Total km</th></tr>"
+
+    body_rows = []
+    total_general = 0.0
+    for fecha in matriz.index:
+        label = matriz_mod.fecha_label(fecha)
+        row = f"<tr><td class='dia'>{label}</td>"
+        fila_total = 0.0
+        fila_tiene_dato = False
+        for f in franjas:
+            v = matriz.at[fecha, f]
+            if pd.isna(v) or v <= 0:
+                row += "<td class='empty'>&mdash;</td>"
+            else:
+                fila_tiene_dato = True
+                fila_total += float(v)
+                style = _color_for_km(float(v), vmax_global)
+                row += f"<td style='{style}'>{v:.2f}</td>"
+        if fila_tiene_dato:
+            row += f"<td class='total'>{fila_total:.2f}</td>"
+        else:
+            row += "<td class='empty'>&mdash;</td>"
+        row += "</tr>"
+        body_rows.append(row)
+        total_general += fila_total
+
+    foot = "<tr><td class='dia'>Total semana</td>"
+    for f in franjas:
+        col_total = float(matriz[f].sum(skipna=True))
+        if col_total > 0:
+            foot += f"<td>{col_total:.2f}</td>"
+        else:
+            foot += "<td class='empty'>&mdash;</td>"
+    foot += f"<td class='total'>{total_general:.2f}</td></tr>"
+
+    return (
+        "<div class='matriz-wrap'><table class='matriz'>"
+        f"<thead>{head}</thead>"
+        f"<tbody>{''.join(body_rows)}</tbody>"
+        f"<tfoot>{foot}</tfoot>"
+        "</table></div>"
+    )
+
+
+def _render_kpis(resumen: dict) -> str:
+    return (
+        "<div class='kpis'>"
+        f"<div class='kpi'><div class='label'>Total km</div>"
+        f"<div class='value'>{resumen['total_km']:.2f}</div></div>"
+        f"<div class='kpi'><div class='label'>Dias activos</div>"
+        f"<div class='value'>{resumen['dias_activos']} / {resumen['dias_totales']}</div></div>"
+        f"<div class='kpi'><div class='label'>Promedio km / dia activo</div>"
+        f"<div class='value'>{resumen['promedio_dia']:.2f}</div></div>"
+        "</div>"
+    )
+
+
+def _render_top_placas(top: list[dict]) -> str:
+    if not top:
+        return ""
+    max_km = top[0]["total_km"] or 1.0
+    rows = []
+    for i, t in enumerate(top, start=1):
+        pct = min(t["total_km"] / max_km, 1.0) * 100
+        rows.append(
+            f"<tr>"
+            f"<td class='rank'>{i}</td>"
+            f"<td class='placa'>{t['placa']}</td>"
+            f"<td class='num'>{t['total_km']:.2f} km</td>"
+            f"<td><div class='bar'><span style='width:{pct:.1f}%'></span></div></td>"
+            f"<td class='num'>{t['dias_activos']}</td>"
+            f"<td class='num'>{t['promedio_dia']:.2f} km</td>"
+            f"</tr>"
+        )
+    return (
+        "<section class='top-section'>"
+        "<h2>Top 10 placas con mas km recorridos</h2>"
+        "<div class='sub'>Ordenadas por km totales en la ventana 5h-20h del periodo.</div>"
+        "<table class='top'>"
+        "<thead><tr>"
+        "<th>#</th><th>Placa</th><th>Total km</th>"
+        "<th>Distribucion</th><th>Dias act.</th><th>Prom/dia</th>"
+        "</tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody>"
+        "</table></section>"
+    )
+
+
+def _fmt_money(v: float) -> str:
+    """Formato $1.234 con separador de miles, sin decimales."""
+    return f"${v:,.0f}".replace(",", ".")
+
+
+def _render_top_morosos(top: list[dict]) -> str:
+    if not top:
+        return ""
+    max_cuotas = top[0]["num_cuotas"] or 1.0
+    rows = []
+    sin_recorrido = 0
+    for i, t in enumerate(top, start=1):
+        pct = min(t["num_cuotas"] / max_cuotas, 1.0) * 100
+        km = t.get("km_recorridos")
+        if km is None:
+            row_class = " class='row-no-km'"
+            km_cell = "<span class='badge-alert'>Sin recorrido</span>"
+            sin_recorrido += 1
+        else:
+            row_class = ""
+            km_cell = f"{km:.2f} km"
+        rows.append(
+            f"<tr{row_class}>"
+            f"<td class='rank'>{i}</td>"
+            f"<td class='placa'>{t['placa']}</td>"
+            f"<td>{t['conductor']}</td>"
+            f"<td class='num'>{t['num_cuotas']:.1f}</td>"
+            f"<td><div class='bar'><span style='width:{pct:.1f}%'></span></div></td>"
+            f"<td class='num'>{_fmt_money(t['deuda'])}</td>"
+            f"<td class='num'>{km_cell}</td>"
+            f"</tr>"
+        )
+    leyenda = ""
+    if sin_recorrido:
+        leyenda = (
+            f" <span class='badge-alert' style='margin-left:8px'>"
+            f"{sin_recorrido} sin recorrido</span>"
+            "<div class='sub' style='margin-top:8px'>"
+            "Filas marcadas: cliente debe pero la moto no registra movimiento "
+            "en el periodo (parqueada o no usada)."
+            "</div>"
+        )
+    return (
+        "<section class='top-section'>"
+        f"<h2>Top 10 clientes con mas cuotas adeudadas{leyenda}</h2>"
+        "<div class='sub'>Ordenados por cantidad de cuotas en mora. "
+        "Km del periodo cruzado con el reporte de recorridos.</div>"
+        "<table class='top'>"
+        "<thead><tr>"
+        "<th>#</th><th>Placa</th><th>Conductor</th>"
+        "<th># Cuotas</th><th>Distribucion</th>"
+        "<th>Deuda</th><th>Km periodo</th>"
+        "</tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody>"
+        "</table></section>"
+    )
+
+
+def _render_placa_section(
+    placa: str, matriz: pd.DataFrame, vmax_global: float
+) -> str:
+    resumen = matriz_mod.resumen_placa(matriz)
+    return (
+        f"<section class='placa-section' id='placa-{placa}'>"
+        f"{_render_kpis(resumen)}"
+        f"{_render_matriz_table(matriz, vmax_global)}"
+        "</section>"
+    )
+
+
+def generar_html(
+    movimientos: pd.DataFrame,
+    rango_label: str = "",
+    all_placas: list[str] | None = None,
+    morosos: list[dict] | None = None,
+) -> str:
+    """Genera el HTML completo, una seccion por placa, con dropdown.
+
+    ``all_placas`` permite incluir en el dropdown placas que no se movieron
+    en el periodo (aparecen con la matriz vacia). Si es ``None``, se usan
+    solo las placas con movimientos.
+
+    ``morosos`` activa el Top 10 por cuotas adeudadas (ya pre-calculado en
+    el CLI con ``nopagos.top_morosos``). Si es ``None``, se renderiza el
+    Top 10 por km recorridos como fallback.
+    """
+    cfg = matriz_mod.MatrizConfig()
+    if all_placas is not None:
+        placas = sorted(set(all_placas))
+    else:
+        placas = sorted(movimientos["placa"].dropna().unique())
+
+    matrices: dict[str, pd.DataFrame] = {}
+    vmax_global = 0.0
+    for placa in placas:
+        m = matriz_mod.build_matriz_km(movimientos, placa, cfg)
+        matrices[placa] = m
+        if not m.empty:
+            local_max = float(m.max().max(skipna=True))
+            if local_max > vmax_global:
+                vmax_global = local_max
+
+    options = "".join(f"<option value='{p}'>{p}</option>" for p in placas)
+    sections = "".join(
+        _render_placa_section(p, matrices[p], vmax_global) for p in placas
+    )
+
+    if morosos is not None:
+        top_html = _render_top_morosos(morosos)
+    else:
+        top = matriz_mod.top_placas(movimientos, cfg, n=10)
+        top_html = _render_top_placas(top)
+
+    sub = f"Recorrido por hora ({cfg.hora_inicio}h-{cfg.hora_fin}h)"
+    if rango_label:
+        sub += f" &middot; {rango_label}"
+
+    return f"""<!doctype html>
+<html lang='es'><head><meta charset='utf-8'>
+<title>Bicimotos - Recorridos por hora</title>
+<style>{CSS}</style></head>
+<body>
+<header>
+  <h1>Bicimotos &mdash; Matriz de recorridos por hora</h1>
+  <div class='sub'>{sub}</div>
+</header>
+<main>
+  <div class='controls'>
+    <label for='placa-select'>Placa</label>
+    <select id='placa-select'>{options}</select>
+  </div>
+  {sections}
+  {top_html}
+</main>
+<footer>Generado automaticamente desde el Excel de Bicimotos.</footer>
+<script>{JS}</script>
+</body></html>"""
