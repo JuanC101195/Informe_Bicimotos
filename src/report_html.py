@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 import pandas as pd
 
 from . import matriz as matriz_mod
+
+
+def _version_tag() -> str:
+    """Timestamp UTC para cache-busting de los links cruzados index <-> imprimir.
+
+    Se incrusta como ``?v=YYYYMMDDHHMMSS`` en cada regeneracion para que el
+    browser no sirva la version cacheada al navegar entre paginas.
+    """
+    return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
 
 CSS = """
 :root{
@@ -349,7 +358,9 @@ def generar_html(
     )
 
     if morosos is not None:
-        top_html = _render_top_morosos(morosos, print_url="imprimir.html")
+        top_html = _render_top_morosos(
+            morosos, print_url=f"imprimir.html?v={_version_tag()}"
+        )
     else:
         top = matriz_mod.top_placas(movimientos, cfg, n=10)
         top_html = _render_top_placas(top)
@@ -529,7 +540,7 @@ def generar_html_print(
     actions = (
         "<div class='print-actions no-print'>"
         "<button class='print-btn' onclick='window.print()'>Imprimir / Guardar PDF</button>"
-        "<a href='index.html'>&larr; Volver al reporte completo</a>"
+        f"<a href='index.html?v={_version_tag()}'>&larr; Volver al reporte completo</a>"
         "</div>"
     )
 
