@@ -45,6 +45,8 @@ table.matriz td.total,table.matriz th.total{
   background:#0b1220;font-weight:600;color:var(--accent)
 }
 table.matriz tfoot td{background:#0b1220;font-weight:600;color:var(--accent)}
+table.matriz th.hl-col,table.matriz td.hl-col{
+  background:#ef4444 !important;color:#fff !important}
 .empty{color:#475569}
 .placa-section{display:none}
 .placa-section.active{display:block}
@@ -108,7 +110,19 @@ def _color_for_km(km: float, vmax: float) -> str:
     return f"background:rgb({r},{g},{b});color:{text_color};"
 
 
-def _render_matriz_table(matriz: pd.DataFrame, vmax_global: float) -> str:
+def _franja_pico(matriz: pd.DataFrame, franjas: list[str]) -> str | None:
+    """Devuelve la franja horaria con mayor total de km en la semana, o None."""
+    totales = {f: float(matriz[f].sum(skipna=True)) for f in franjas}
+    if not any(v > 0 for v in totales.values()):
+        return None
+    return max(totales, key=totales.get)
+
+
+def _render_matriz_table(
+    matriz: pd.DataFrame,
+    vmax_global: float,
+    highlight_franja: str | None = None,
+) -> str:
     cfg = matriz_mod.MatrizConfig()
     franjas = [cfg.franja_label(h) for h in cfg.franjas()]
 
@@ -120,9 +134,12 @@ def _render_matriz_table(matriz: pd.DataFrame, vmax_global: float) -> str:
             "</p></div>"
         )
 
+    def _hl(f: str) -> str:
+        return " hl-col" if highlight_franja and f == highlight_franja else ""
+
     head = "<tr><th class='dia'>Dia</th>"
     for f in franjas:
-        head += f"<th>{f}</th>"
+        head += f"<th class='franja{_hl(f)}'>{f}</th>"
     head += "<th class='total'>Total km</th></tr>"
 
     body_rows = []
@@ -134,13 +151,15 @@ def _render_matriz_table(matriz: pd.DataFrame, vmax_global: float) -> str:
         fila_tiene_dato = False
         for f in franjas:
             v = matriz.at[fecha, f]
+            hl = _hl(f)
             if pd.isna(v) or v <= 0:
-                row += "<td class='empty'>&mdash;</td>"
+                row += f"<td class='empty{hl}'>&mdash;</td>"
             else:
                 fila_tiene_dato = True
                 fila_total += float(v)
                 style = _color_for_km(float(v), vmax_global)
-                row += f"<td style='{style}'>{v:.2f}</td>"
+                cls = f" class='{hl.strip()}'" if hl else ""
+                row += f"<td{cls} style='{style}'>{v:.2f}</td>"
         if fila_tiene_dato:
             row += f"<td class='total'>{fila_total:.2f}</td>"
         else:
@@ -152,10 +171,12 @@ def _render_matriz_table(matriz: pd.DataFrame, vmax_global: float) -> str:
     foot = "<tr><td class='dia'>Total semana</td>"
     for f in franjas:
         col_total = float(matriz[f].sum(skipna=True))
+        hl = _hl(f)
         if col_total > 0:
-            foot += f"<td>{col_total:.2f}</td>"
+            cls = f" class='{hl.strip()}'" if hl else ""
+            foot += f"<td{cls}>{col_total:.2f}</td>"
         else:
-            foot += "<td class='empty'>&mdash;</td>"
+            foot += f"<td class='empty{hl}'>&mdash;</td>"
     foot += f"<td class='total'>{total_general:.2f}</td></tr>"
 
     return (
@@ -366,6 +387,17 @@ PRINT_CSS = """
 .print-btn:hover{filter:brightness(1.1)}
 .print-actions a{color:var(--accent);font-size:13px;text-decoration:none}
 .print-actions a:hover{text-decoration:underline}
+.placa-print{margin-top:20px}
+.placa-print h3{margin:0 0 8px 0;font-size:15px;font-weight:600;color:var(--text)}
+.matrices-print-header{margin-top:32px}
+.matrices-print-header h2{margin:0 0 4px 0;font-size:18px;font-weight:600}
+.matrices-print-header .sub{color:var(--muted);font-size:12px;margin-bottom:8px}
+.sin-recorrido-section{margin-top:24px;background:var(--panel);
+  border:1px solid var(--border);border-radius:8px;padding:16px}
+.sin-recorrido-section h2{margin:0 0 4px 0;font-size:16px;font-weight:600}
+.sin-recorrido-section .sub{color:var(--muted);font-size:12px;margin-bottom:10px}
+.sin-recorrido-section ul{margin:0;padding-left:20px;color:var(--text);font-size:13px}
+.sin-recorrido-section li{margin:2px 0}
 @media print{
   body{background:#fff;color:#000}
   header{background:#fff;color:#000;border-bottom:1px solid #ccc}
@@ -386,21 +418,98 @@ PRINT_CSS = """
   .bar{background:#eee !important;-webkit-print-color-adjust:exact;
     print-color-adjust:exact}
   .bar > span{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .matrices-print-header h2{color:#000}
+  .matrices-print-header .sub{color:#666}
+  .placa-print{page-break-inside:avoid;margin-top:16px}
+  .placa-print h3{color:#000}
+  .matriz-wrap{background:#fff;border:1px solid #ccc;padding:6px}
+  table.matriz th{background:#f5f5f5 !important;color:#333 !important;
+    border:1px solid #ccc;-webkit-print-color-adjust:exact;
+    print-color-adjust:exact}
+  table.matriz td{border:1px solid #ddd;color:#000 !important;
+    background:transparent !important}
+  table.matriz td[style]{background:transparent !important;color:#000 !important}
+  table.matriz td.dia{background:#f5f5f5 !important;color:#000 !important;
+    font-weight:600;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  table.matriz td.total,table.matriz th.total{background:#f5f5f5 !important;
+    color:#0369a1 !important;-webkit-print-color-adjust:exact;
+    print-color-adjust:exact}
+  table.matriz tfoot td{background:#f5f5f5 !important;color:#0369a1 !important;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  table.matriz th.hl-col,table.matriz td.hl-col{
+    background:#ef4444 !important;color:#fff !important;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .sin-recorrido-section{background:#fff;border:1px solid #ccc;
+    page-break-inside:avoid}
+  .sin-recorrido-section h2{color:#000}
+  .sin-recorrido-section .sub{color:#666}
+  .sin-recorrido-section li{color:#000}
   footer{display:none}
 }
 """
 
 
+def _render_matrices_print(
+    morosos: list[dict],
+    matrices: dict[str, pd.DataFrame],
+    vmax: float,
+) -> str:
+    """Bloques de matriz por placa del top + seccion de placas sin recorrido."""
+    cfg = matriz_mod.MatrizConfig()
+    franjas = [cfg.franja_label(h) for h in cfg.franjas()]
+
+    bloques: list[str] = []
+    sin_rec: list[dict] = []
+    for t in morosos:
+        m = matrices.get(t["placa"])
+        if m is None or m.empty:
+            sin_rec.append(t)
+            continue
+        pico = _franja_pico(m, franjas)
+        bloques.append(
+            "<article class='placa-print'>"
+            f"<h3>{t['placa']} &mdash; {t['conductor']}</h3>"
+            f"{_render_matriz_table(m, vmax, highlight_franja=pico)}"
+            "</article>"
+        )
+
+    out = ""
+    if bloques:
+        out += (
+            "<section class='matrices-print-header'>"
+            "<h2>Matrices de recorrido (Top 10 con km en el periodo)</h2>"
+            "<div class='sub'>Franja con mayor total semanal en rojo.</div>"
+            f"{''.join(bloques)}"
+            "</section>"
+        )
+    if sin_rec:
+        items = "".join(
+            f"<li>{t['placa']} &mdash; {t['conductor']}</li>" for t in sin_rec
+        )
+        out += (
+            "<section class='sin-recorrido-section'>"
+            "<h2>Top sin recorrido en el periodo</h2>"
+            "<div class='sub'>Estas placas estan en el top de morosos pero no se "
+            "muestra matriz porque no registran km en el periodo consultado.</div>"
+            f"<ul>{items}</ul>"
+            "</section>"
+        )
+    return out
+
+
 def generar_html_print(
     morosos: list[dict] | None,
     rango_label: str = "",
+    matrices: dict[str, pd.DataFrame] | None = None,
+    vmax: float = 0.0,
 ) -> str:
-    """HTML minimo con solo el Top 10 morosos, optimizado para impresion/PDF.
+    """HTML minimo con Top 10 morosos + matrices por placa, optimizado para PDF.
 
-    Reusa el mismo renderer ``_render_top_morosos`` que el reporte principal,
-    asi que el look del Top es identico. Agrega un boton "Imprimir / Guardar PDF"
-    que llama ``window.print()`` y reglas ``@media print`` para que el PDF
-    salga limpio (fondo blanco, texto negro, badges de alerta visibles).
+    Reusa el mismo renderer ``_render_top_morosos`` que el reporte principal.
+    Si ``matrices`` viene (dict ``placa -> DataFrame``), debajo del top se
+    renderiza una matriz por placa con la franja horaria de mayor total
+    semanal resaltada en rojo. Las placas del top sin recorrido se listan
+    aparte para no imprimir matrices vacias.
     """
     if not morosos:
         body = (
@@ -410,6 +519,8 @@ def generar_html_print(
         )
     else:
         body = _render_top_morosos(morosos)
+        if matrices is not None:
+            body += _render_matrices_print(morosos, matrices, vmax)
 
     sub = "Vista para impresion / PDF"
     if rango_label:
