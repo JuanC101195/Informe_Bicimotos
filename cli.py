@@ -67,8 +67,25 @@ def cmd_reporte(args: argparse.Namespace) -> int:
     out_path.write_text(html, encoding="utf-8")
 
     if morosos:
+        cfg = matriz.MatrizConfig()
+        matrices_top: dict = {}
+        vmax_print = 0.0
+        for t in morosos:
+            m = matriz.build_matriz_km(mov, t["placa"], cfg)
+            if m.empty:
+                continue
+            matrices_top[t["placa"]] = m
+            local_max = float(m.max().max(skipna=True))
+            if local_max > vmax_print:
+                vmax_print = local_max
+
         print_path = out_path.parent / "imprimir.html"
-        html_print = report_html.generar_html_print(morosos, rango_label=rango)
+        html_print = report_html.generar_html_print(
+            morosos,
+            rango_label=rango,
+            matrices=matrices_top,
+            vmax=vmax_print,
+        )
         print_path.write_text(html_print, encoding="utf-8")
         print(f"      Escribiendo {print_path}...")
 
