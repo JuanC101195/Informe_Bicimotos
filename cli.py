@@ -85,6 +85,7 @@ def cmd_reporte(args: argparse.Namespace) -> int:
             rango_label=rango,
             matrices=matrices_top,
             vmax=vmax_print,
+            back_url=out_path.name,
         )
         print_path.write_text(html_print, encoding="utf-8")
         print(f"      Escribiendo {print_path}...")
