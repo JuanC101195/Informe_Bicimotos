@@ -113,17 +113,20 @@ if ($resp -notmatch '^[sS]') {
 }
 
 # 4. Branch + copia a docs/ + commit + push + merge
-$fecha = Get-Date -Format "yyyy-MM-dd"
-$branch = "docs/regenera-dashboard-$fecha"
+$baseName = "docs/regenera-dashboard-$(Get-Date -Format 'yyyy-MM-dd')"
+git show-ref --verify --quiet "refs/heads/$baseName"
+if ($LASTEXITCODE -eq 0) {
+    $branch = "$baseName-$(Get-Date -Format 'HHmmss')"
+    Write-Host "Rama '$baseName' ya existe; usando '$branch' para evitar colision." -ForegroundColor Yellow
+} else {
+    $branch = $baseName
+}
 
 Write-Host ""
-Write-Host "=== Publicando ===" -ForegroundColor Cyan
+Write-Host "=== Publicando en rama $branch ===" -ForegroundColor Cyan
 
-git checkout -b $branch 2>$null
-if ($LASTEXITCODE -ne 0) {
-    git checkout $branch
-    if ($LASTEXITCODE -ne 0) { Fail "No pude crear ni checkout de $branch" }
-}
+git checkout -b $branch
+if ($LASTEXITCODE -ne 0) { Fail "No pude crear la rama $branch" }
 
 Copy-Item "reportes\bicimotos.html" "docs\index.html" -Force
 Copy-Item "reportes\imprimir.html"  "docs\imprimir.html" -Force
