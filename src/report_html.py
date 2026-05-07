@@ -513,6 +513,7 @@ def generar_html_print(
     rango_label: str = "",
     matrices: dict[str, pd.DataFrame] | None = None,
     vmax: float = 0.0,
+    back_url: str = "index.html",
 ) -> str:
     """HTML minimo con Top 10 morosos + matrices por placa, optimizado para PDF.
 
@@ -540,7 +541,7 @@ def generar_html_print(
     actions = (
         "<div class='print-actions no-print'>"
         "<button class='print-btn' onclick='window.print()'>Imprimir / Guardar PDF</button>"
-        f"<a href='index.html?v={_version_tag()}'>&larr; Volver al reporte completo</a>"
+        f"<a href='{back_url}?v={_version_tag()}'>&larr; Volver al reporte completo</a>"
         "</div>"
     )
 
