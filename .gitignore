@@ -16,3 +16,7 @@ reportes/logs/
 *.csv
 .env
 .env.*
+
+# Mensajes de commit temporales (los usa actualizar.ps1)
+.commit_msg
+.commit_msg.tmp
