@@ -3,25 +3,27 @@
   Regenera el dashboard de Informe_Bicimotos y lo publica en GitHub Pages.
 
 .DESCRIPTION
-  Toma dos Excels (GPS + nopagos), corre el CLI, valida local en reportes/,
-  y si confirmas publica a docs/, hace commit, push y merge a main.
+  Si no le pasas los Excels, abre un cuadro para seleccionarlos (uno para
+  GPS, otro para nopagos). Corre el CLI, valida local en reportes/, y si
+  confirmas publica a docs/, hace commit, push y merge a main.
 
 .EXAMPLE
+  # Modo facil: abre un file picker para cada Excel
+  .\actualizar.ps1
+
+.EXAMPLE
+  # Modo explicito: pasas las rutas
   .\actualizar.ps1 -Gps "C:\Users\LeNoVo\Downloads\reports_gps.xlsx" `
                    -Nopagos "C:\Users\LeNoVo\Downloads\nopagos.xlsx"
 
 .EXAMPLE
   # Solo regenerar local, no tocar git:
-  .\actualizar.ps1 -Gps "..." -Nopagos "..." -SoloLocal
+  .\actualizar.ps1 -SoloLocal
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory=$true)]
     [string]$Gps,
-
-    [Parameter(Mandatory=$true)]
     [string]$Nopagos,
-
     [switch]$SoloLocal
 )
 
@@ -34,10 +36,35 @@ function Fail($msg) {
     exit 1
 }
 
-# 1. Validaciones
-if (-not (Test-Path $python))   { Fail "No encuentro Python 3.12 en $python" }
-if (-not (Test-Path $Gps))      { Fail "No existe el Excel GPS: $Gps" }
-if (-not (Test-Path $Nopagos))  { Fail "No existe el Excel nopagos: $Nopagos" }
+function Select-Excel($titulo) {
+    Add-Type -AssemblyName System.Windows.Forms | Out-Null
+    $dlg = New-Object System.Windows.Forms.OpenFileDialog
+    $dlg.Title = $titulo
+    $dlg.Filter = "Excel (*.xlsx;*.xls;*.xlsm)|*.xlsx;*.xls;*.xlsm|Todos|*.*"
+    $dlg.InitialDirectory = Join-Path $env:USERPROFILE "Downloads"
+    $dlg.Multiselect = $false
+    if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+        return $dlg.FileName
+    }
+    return $null
+}
+
+# 1. Validaciones (Python primero, luego Excels)
+if (-not (Test-Path $python)) { Fail "No encuentro Python 3.12 en $python" }
+
+if (-not $Gps) {
+    Write-Host "Selecciona el Excel del GPS (recorridos)..." -ForegroundColor Cyan
+    $Gps = Select-Excel "Excel GPS (recorridos) - ej. reports_gps.xlsx"
+    if (-not $Gps) { Fail "Cancelado: no se selecciono Excel del GPS" }
+}
+if (-not $Nopagos) {
+    Write-Host "Selecciona el Excel de no pagos..." -ForegroundColor Cyan
+    $Nopagos = Select-Excel "Excel de no pagos - ej. nopagos.xlsx"
+    if (-not $Nopagos) { Fail "Cancelado: no se selecciono Excel de no pagos" }
+}
+
+if (-not (Test-Path $Gps))     { Fail "No existe el Excel GPS: $Gps" }
+if (-not (Test-Path $Nopagos)) { Fail "No existe el Excel nopagos: $Nopagos" }
 
 Set-Location $repo
 
