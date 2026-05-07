@@ -44,6 +44,7 @@ def _canonicalize(name: str) -> str:
         .replace("\xfa", "u")
         .replace("\xf1", "n")
     )
+    n = n.replace(" ", "")
     aliases = {
         "estado": "estado",
         "placa": "placa",
