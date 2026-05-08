@@ -2,11 +2,19 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pandas as pd
 
 from . import parsers
+
+_KM_VALUE_RE = re.compile(r"^\s*\d+(?:[.,]\d+)?\s*km\s*$", re.IGNORECASE)
+_KM_COLUMN_CANDIDATES = (
+    "longitud_ruta",
+    "posiciondeparada_velocidadmaxima",
+    "posiciondeparada_velocidadmedia",
+)
 
 CANONICAL_COLUMNS = [
     "estado",
@@ -58,6 +66,24 @@ def _canonicalize(name: str) -> str:
     return aliases.get(n, n)
 
 
+def _km_de_fila(row: pd.Series, columnas: tuple[str, ...]) -> float:
+    """Devuelve los km de una fila probando las columnas candidatas en orden.
+
+    El export del GPS desfasa los km por fila: la mayoria los trae en
+    ``longitud_ruta`` pero hay filas (mismo archivo, distintas placas)
+    donde quedan corridos a ``posiciondeparada_velocidadmaxima``. Para
+    cada fila, devolvemos el primer valor que matchee ``"X.XX Km"``.
+    """
+    for col in columnas:
+        v = row.get(col)
+        if v is None:
+            continue
+        v_str = str(v)
+        if _KM_VALUE_RE.match(v_str):
+            return parsers.parse_km(v_str)
+    return 0.0
+
+
 def load_excel(path: str | Path, sheet_name: str = "Report") -> pd.DataFrame:
     """Carga el Excel y devuelve un DataFrame normalizado y tipado.
 
@@ -68,11 +94,13 @@ def load_excel(path: str | Path, sheet_name: str = "Report") -> pd.DataFrame:
     - ``duracion_seg`` / ``ralenti_seg``: segundos como float.
     - ``km_ruta``: distancia en km (float, 0 para detenidos).
 
-    Nota: el Excel reusa la columna ``longitud_ruta`` con doble proposito —
-    en filas ``Detenido`` trae ``"lat,lon"``, en filas ``Movimiento`` trae
-    ``"X.XXKm"``. ``parse_km`` devuelve 0.0 para los strings de coord, asi
-    que las filas de detenido quedan con ``km_ruta=0`` (correcto, no
-    aportan al recorrido).
+    Nota: el export del GPS desfasa los km por fila — la mayoria los trae
+    en ``longitud_ruta`` pero algunas filas los traen en
+    ``posiciondeparada_velocidadmaxima``. ``_km_de_fila`` prueba las
+    candidatas en orden y devuelve el primer valor que matchee el formato
+    ``"X.XX Km"``, asi que filas de ``Detenido`` (que tienen ``"lat,lon"``)
+    y movimientos con datos vacios quedan en 0 — correcto, no aportan al
+    recorrido.
     """
     df = pd.read_excel(path, sheet_name=sheet_name, header=[0, 1])
     df.columns = _flatten_columns(df.columns)
@@ -81,7 +109,9 @@ def load_excel(path: str | Path, sheet_name: str = "Report") -> pd.DataFrame:
     df["fin_dt"] = df["fin"].apply(parsers.parse_datetime_pegada)
     df["duracion_seg"] = df["duracion"].apply(parsers.parse_duracion_segundos)
     df["ralenti_seg"] = df["ralenti"].apply(parsers.parse_duracion_segundos)
-    df["km_ruta"] = df["longitud_ruta"].apply(parsers.parse_km)
+
+    candidatas = tuple(c for c in _KM_COLUMN_CANDIDATES if c in df.columns)
+    df["km_ruta"] = df.apply(lambda r: _km_de_fila(r, candidatas), axis=1)
 
     return df
 
