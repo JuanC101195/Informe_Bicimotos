@@ -105,6 +105,7 @@ def load_excel(path: str | Path, sheet_name: str = "Report") -> pd.DataFrame:
     df = pd.read_excel(path, sheet_name=sheet_name, header=[0, 1])
     df.columns = _flatten_columns(df.columns)
 
+    df["placa"] = df["placa"].apply(parsers.normalize_placa)
     df["comienzo_dt"] = df["comienzo"].apply(parsers.parse_datetime_pegada)
     df["fin_dt"] = df["fin"].apply(parsers.parse_datetime_pegada)
     df["duracion_seg"] = df["duracion"].apply(parsers.parse_duracion_segundos)

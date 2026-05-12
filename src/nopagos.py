@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from . import parsers
+
 DEFAULT_SHEET = "nopagos"
 
 
@@ -24,8 +26,8 @@ def _split_placa_conductor(value) -> tuple[str | None, str | None]:
         return None, None
     if " - " in s:
         placa, _, nombre = s.partition(" - ")
-        return placa.strip() or None, nombre.strip() or None
-    return s, None
+        return parsers.normalize_placa(placa), nombre.strip() or None
+    return parsers.normalize_placa(s), None
 
 
 def load_nopagos(path: str | Path, sheet_name: str = DEFAULT_SHEET) -> pd.DataFrame:
