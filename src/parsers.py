@@ -19,6 +19,21 @@ _DUR_RE = re.compile(
     r"(?:(?P<h>\d+)h)?(?:(?P<m>\d+)min)?(?:(?P<s>\d+)s)?$"
 )
 _KM_RE = re.compile(r"^([\d.,]+)\s*Km$", re.IGNORECASE)
+_PLACA_RE = re.compile(r"\s+")
+
+
+def normalize_placa(value) -> str | None:
+    """Quita espacios internos y trailing/leading de una placa.
+
+    El export del GPS a veces trae las placas con espacios: ``"BI0 028"``,
+    ``"BI0 028 "``. El reporte de nopagos las trae sin espacios:
+    ``"BI0028"``. Para que el cruce matchee, normalizamos a la forma
+    compacta en ambos loaders.
+    """
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return None
+    s = _PLACA_RE.sub("", str(value))
+    return s or None
 
 
 def parse_datetime_pegada(value) -> datetime | pd.NaTType:
